@@ -50,7 +50,7 @@ public class ElasticsearchUtils {
     public static final String DOCUMENT_META_TYPE_NAME = "metadata";
     public static final String DOCUMENT_META_FIELD_NAME = "__FOXTROT_METADATA__";
     public static final String DOCUMENT_META_ID_FIELD_NAME = String.format("%s.id", DOCUMENT_META_FIELD_NAME);
-    public static  String TABLENAME_PREFIX = "foxtrot";
+    public static String TABLENAME_PREFIX = "foxtrot";
     public static final String TABLENAME_POSTFIX = "table";
     private static final DateTimeFormatter FORMATTER = DateTimeFormat.forPattern("dd-M-yyyy");
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("dd-M-yyyy");
@@ -64,7 +64,7 @@ public class ElasticsearchUtils {
         return mapper;
     }
 
-    public static void setTableNamePrefix(String tableNamePrefix){
+    public static void setTableNamePrefix(String tableNamePrefix) {
         ElasticsearchUtils.TABLENAME_PREFIX = tableNamePrefix;
     }
 
@@ -90,9 +90,9 @@ public class ElasticsearchUtils {
     @VisibleForTesting
     public static String[] getIndices(final String table, final ActionRequest request, final Interval interval) throws Exception {
         DateTime start = interval.getStart().toLocalDate().toDateTimeAtStartOfDay();
-        if(start.getYear() <= 1970) {
+        if (start.getYear() <= 1970) {
             logger.warn("Request of type {} running on all indices", request.getClass().getSimpleName());
-            return new String[] {getIndices(table)};
+            return new String[]{getIndices(table)};
         }
         List<String> indices = Lists.newArrayList();
         final DateTime end = interval.getEnd().plusDays(1).toLocalDate().toDateTimeAtStartOfDay();
@@ -112,14 +112,14 @@ public class ElasticsearchUtils {
                 ElasticsearchUtils.TABLENAME_POSTFIX, datePostfix);
     }
 
-    public static PutIndexTemplateRequest getClusterTemplateMapping(IndicesAdminClient indicesAdminClient){
+    public static PutIndexTemplateRequest getClusterTemplateMapping(IndicesAdminClient indicesAdminClient) {
         try {
             PutIndexTemplateRequestBuilder builder = new PutIndexTemplateRequestBuilder(indicesAdminClient, "generic_template");
-            builder.setTemplate(String.format("%s-*",ElasticsearchUtils.TABLENAME_PREFIX));
+            builder.setTemplate(String.format("%s-*", ElasticsearchUtils.TABLENAME_PREFIX));
             System.out.println(getDocumentMapping().string());
             builder.addMapping(DOCUMENT_TYPE_NAME, getDocumentMapping());
             return builder.request();
-        } catch (IOException ex){
+        } catch (IOException ex) {
             logger.error("TEMPLATE_CREATION_FAILED", ex);
             return null;
         }
@@ -127,101 +127,101 @@ public class ElasticsearchUtils {
 
     public static XContentBuilder getDocumentMapping() throws IOException {
         return XContentFactory.jsonBuilder()
-            .startObject()
+                .startObject()
                 .field(DOCUMENT_TYPE_NAME)
-                    .startObject()
-                        .field("_source")
-                            .startObject()
-                                .field("enabled", false)
-                            .endObject()
-                        .field("_all")
-                            .startObject()
-                                .field("enabled", false)
-                            .endObject()
-                        .field("_timestamp")
-                            .startObject()
-                                .field("enabled", true)
-                                .field("store", true)
-                            .endObject()
-                        .field("dynamic_templates")
-                            .startArray()
-                                .startObject()
-                                    .field("template_metadata_fields")
-                                    .startObject()
-                                        .field("path_match", ElasticsearchUtils.DOCUMENT_META_FIELD_NAME + ".*")
-                                        .field("mapping")
-                                        .startObject()
-                                            .field("store", true)
-                                            .field("doc_values", true)
-                                            .field("index", "not_analyzed")
-                                            .field("fielddata")
-                                            .startObject()
-                                                .field("format", "doc_values")
-                                            .endObject()
-                                        .endObject()
-                                    .endObject()
-                                .endObject()
-                                .startObject()
-                                    .field("template_timestamp")
-                                        .startObject()
-                                            .field("match", "timestamp")
-                                            .field("mapping")
-                                                .startObject()
-                                                    .field("store", false)
-                                                    .field("index", "not_analyzed")
-                                                    .field("fielddata")
-                                                        .startObject()
-                                                            .field("format", "doc_values")
-                                                        .endObject()
-                                                    .field("type", "date")
-                                                .endObject()
-                                        .endObject()
-                                .endObject()
-                                .startObject()
-                                    .field("template_no_store_analyzed")
-                                        .startObject()
-                                            .field("match", "*")
-                                            .field("match_mapping_type", "string")
-                                            .field("mapping")
-                                                .startObject()
-                                                    .field("store", false)
-                                                    .field("index", "not_analyzed")
-                                                    .field("fielddata")
-                                                        .startObject()
-                                                            .field("format", "doc_values")
-                                                        .endObject()
-                                                    .field("fields")
-                                                    .startObject()
-                                                        .field("analyzed")
-                                                        .startObject()
-                                                            .field("store", false)
-                                                            .field("type", "string")
-                                                            .field("index", "analyzed")
-                                                        .endObject()
-                                                    .endObject()
-                                                .endObject()
-                                        .endObject()
-                                .endObject()
-                                .startObject()
-                                    .field("template_no_store")
-                                        .startObject()
-                                            .field("match_mapping_type", "date|boolean|double|long|integer")
-                                            .field("match_pattern", "regex")
-                                            .field("path_match", ".*")
-                                            .field("mapping")
-                                                .startObject()
-                                                .field("store", false)
-                                                .field("index", "not_analyzed")
-                                                .field("fielddata")
-                                                    .startObject()
-                                                        .field("format", "doc_values")
-                                                    .endObject()
-                                            .endObject()
-                                        .endObject()
-                                .endObject()
-                            .endArray()
-                    .endObject()
-            .endObject();
+                .startObject()
+                .field("_source")
+                .startObject()
+                .field("enabled", false)
+                .endObject()
+                .field("_all")
+                .startObject()
+                .field("enabled", false)
+                .endObject()
+                .field("_timestamp")
+                .startObject()
+                .field("enabled", true)
+                .field("store", true)
+                .endObject()
+                .field("dynamic_templates")
+                .startArray()
+                .startObject()
+                .field("template_metadata_fields")
+                .startObject()
+                .field("path_match", ElasticsearchUtils.DOCUMENT_META_FIELD_NAME + ".*")
+                .field("mapping")
+                .startObject()
+                .field("store", true)
+                .field("doc_values", true)
+                .field("index", "not_analyzed")
+                .field("fielddata")
+                .startObject()
+                .field("format", "doc_values")
+                .endObject()
+                .endObject()
+                .endObject()
+                .endObject()
+                .startObject()
+                .field("template_timestamp")
+                .startObject()
+                .field("match", "timestamp")
+                .field("mapping")
+                .startObject()
+                .field("store", false)
+                .field("index", "not_analyzed")
+                .field("fielddata")
+                .startObject()
+                .field("format", "doc_values")
+                .endObject()
+                .field("type", "date")
+                .endObject()
+                .endObject()
+                .endObject()
+                .startObject()
+                .field("template_no_store_analyzed")
+                .startObject()
+                .field("match", "*")
+                .field("match_mapping_type", "string")
+                .field("mapping")
+                .startObject()
+                .field("store", false)
+                .field("index", "not_analyzed")
+                .field("fielddata")
+                .startObject()
+                .field("format", "doc_values")
+                .endObject()
+                .field("fields")
+                .startObject()
+                .field("analyzed")
+                .startObject()
+                .field("store", false)
+                .field("type", "string")
+                .field("index", "analyzed")
+                .endObject()
+                .endObject()
+                .endObject()
+                .endObject()
+                .endObject()
+                .startObject()
+                .field("template_no_store")
+                .startObject()
+                .field("match_mapping_type", "date|boolean|double|long|integer")
+                .field("match_pattern", "regex")
+                .field("path_match", ".*")
+                .field("mapping")
+                .startObject()
+                .field("store", false)
+                .field("index", "not_analyzed")
+                .field("fielddata")
+                .startObject()
+                .field("format", "doc_values")
+                .endObject()
+                .endObject()
+                .endObject()
+                .endObject()
+                .endArray()
+                .endObject()
+                .endObject();
     }
 
     public static void initializeMappings(Client client) {
@@ -252,13 +252,24 @@ public class ElasticsearchUtils {
         return creationDate.isAfter(startTime) && creationDate.isBefore(endTime);
     }
 
-    public static String getTableNameFromIndex(String currentIndex) {
-        if (currentIndex.contains(TABLENAME_PREFIX) && currentIndex.contains(TABLENAME_POSTFIX)) {
-            String tempIndex = currentIndex.substring(currentIndex.indexOf(TABLENAME_PREFIX) + TABLENAME_PREFIX.length() + 1);
+    public static String getTableNameFromIndex(String index) {
+        if (index.contains(TABLENAME_PREFIX) && index.contains(TABLENAME_POSTFIX)) {
+            String tempIndex = index.substring(index.indexOf(TABLENAME_PREFIX) + TABLENAME_PREFIX.length() + 1);
             int position = tempIndex.lastIndexOf(String.format("-%s", TABLENAME_POSTFIX));
             return tempIndex.substring(0, position);
         } else {
             return null;
         }
+    }
+
+    public static DateTime getCreationDateFromIndex(String index) {
+        String table = getTableNameFromIndex(index);
+        if (table == null) {
+            return null;
+        }
+
+        String indexPrefix = getIndexPrefix(table);
+        String creationDateString = index.substring(index.indexOf(indexPrefix) + indexPrefix.length());
+        return DATE_TIME_FORMATTER.parseDateTime(creationDateString);
     }
 }

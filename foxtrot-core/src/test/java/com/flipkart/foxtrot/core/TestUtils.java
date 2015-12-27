@@ -1,12 +1,12 @@
 /**
  * Copyright 2014 Flipkart Internet Pvt. Ltd.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,24 +14,6 @@
  * limitations under the License.
  */
 package com.flipkart.foxtrot.core;
-
-import static org.mockito.Mockito.when;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Vector;
-
-import com.flipkart.foxtrot.core.datastore.impl.hbase.HbaseConfig;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.mockito.Matchers;
-import org.mockito.Mockito;
-import org.reflections.Reflections;
-import org.reflections.scanners.SubTypesScanner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
@@ -41,10 +23,23 @@ import com.flipkart.foxtrot.core.common.Action;
 import com.flipkart.foxtrot.core.datastore.DataStore;
 import com.flipkart.foxtrot.core.datastore.DataStoreException;
 import com.flipkart.foxtrot.core.datastore.impl.hbase.HBaseDataStore;
+import com.flipkart.foxtrot.core.datastore.impl.hbase.HbaseConfig;
 import com.flipkart.foxtrot.core.datastore.impl.hbase.HbaseTableConnection;
 import com.flipkart.foxtrot.core.querystore.actions.spi.ActionMetadata;
 import com.flipkart.foxtrot.core.querystore.actions.spi.AnalyticsLoader;
 import com.flipkart.foxtrot.core.querystore.actions.spi.AnalyticsProvider;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.joda.time.DateTime;
+import org.mockito.Matchers;
+import org.mockito.Mockito;
+import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+
+import static org.mockito.Mockito.when;
 
 /**
  * Created by rishabh.goyal on 28/04/14.
@@ -191,6 +186,21 @@ public class TestUtils {
         return documents;
     }
 
+    public static List<Document> getIndexOptimizationDocuments(ObjectMapper mapper) {
+        List<Document> documents = new Vector<Document>();
+
+        for (int i = 0; i < 10; i++) {
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(0).getMillis(), new Object[]{"os", "android"}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(1).getMillis(), new Object[]{"os", "android", "version", 1, "device", "nexus", "battery", 48}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(2).getMillis(), new Object[]{"os", "android", "version", 3, "device", "nexus", "battery", 87}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(3).getMillis(), new Object[]{"os", "ios", "version", 1, "device", "iphone", "battery", 24}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(4).getMillis(), new Object[]{"os", "ios", "version", 2, "device", "ipad", "battery", 56}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(5).getMillis(), new Object[]{"os", "ios", "version", 2, "device", "nexus", "battery", 35}, mapper));
+            documents.add(TestUtils.getDocument(UUID.randomUUID().toString(), DateTime.now().minusDays(6).getMillis(), new Object[]{"os", "ios", "version", 2, "device", "ipad", "battery", 44}, mapper));
+        }
+        return documents;
+    }
+
     public static List<Document> getMappingDocuments(ObjectMapper mapper) {
         List<Document> documents = new Vector<Document>();
         Map<String, Object> document = new HashMap<String, Object>();
@@ -199,20 +209,20 @@ public class TestUtils {
         document.put("header", Collections.singletonList(Collections.singletonMap("hello", "world")));
         documents.add(new Document("Z", System.currentTimeMillis(), mapper.valueToTree(document)));
 
-        document = new HashMap<String, Object>();
+        document = new HashMap<>();
         document.put("word", "1234");
         document.put("data", Collections.singletonMap("data", "d"));
         document.put("head", Collections.singletonList(Collections.singletonMap("hello", 23)));
         documents.add(new Document("Y", System.currentTimeMillis(), mapper.valueToTree(document)));
         return documents;
     }
-    
+
     public static List<Document> getQueryDocumentsDifferentDate(ObjectMapper mapper, long startTimestamp) {
         List<Document> documents = new Vector<Document>();
         documents.add(TestUtils.getDocument("Z", startTimestamp, new Object[]{"os", "android", "device", "nexus", "battery", 24}, mapper));
         documents.add(TestUtils.getDocument("Y", startTimestamp++, new Object[]{"os", "android", "device", "nexus", "battery", 48}, mapper));
         documents.add(TestUtils.getDocument("X", startTimestamp++, new Object[]{"os", "android", "device", "nexus", "battery", 74}, mapper));
-        documents.add(TestUtils.getDocument("W", startTimestamp++, new Object[] { "os", "android", "device", "nexus", "battery", 99 }, mapper));
+        documents.add(TestUtils.getDocument("W", startTimestamp++, new Object[]{"os", "android", "device", "nexus", "battery", 99}, mapper));
         documents.add(TestUtils.getDocument("A", startTimestamp++, new Object[]{"os", "android", "version", 1, "device", "nexus"}, mapper));
         documents.add(TestUtils.getDocument("B", startTimestamp++, new Object[]{"os", "android", "version", 1, "device", "galaxy"}, mapper));
         documents.add(TestUtils.getDocument("C", startTimestamp++, new Object[]{"os", "android", "version", 2, "device", "nexus"}, mapper));
@@ -220,5 +230,5 @@ public class TestUtils {
         documents.add(TestUtils.getDocument("E", startTimestamp++, new Object[]{"os", "ios", "version", 2, "device", "ipad"}, mapper));
         return documents;
     }
-    
+
 }

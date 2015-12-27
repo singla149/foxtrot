@@ -44,7 +44,5 @@ public interface QueryStore {
 
     void cleanupAll() throws QueryStoreException;
 
-    void cleanup(final String table) throws QueryStoreException;
-
-    void cleanup(final Set<String> tables) throws QueryStoreException;
+    void optimizeIndexes() throws QueryStoreException;
 }

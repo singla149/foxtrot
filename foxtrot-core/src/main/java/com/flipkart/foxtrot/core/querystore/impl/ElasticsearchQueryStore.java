@@ -16,15 +16,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.foxtrot.common.*;
+import com.flipkart.foxtrot.common.Document;
+import com.flipkart.foxtrot.common.FieldTypeMapping;
 import com.flipkart.foxtrot.common.Table;
+import com.flipkart.foxtrot.common.TableFieldMapping;
 import com.flipkart.foxtrot.core.datastore.DataStore;
 import com.flipkart.foxtrot.core.datastore.DataStoreException;
 import com.flipkart.foxtrot.core.parsers.ElasticsearchMappingParser;
 import com.flipkart.foxtrot.core.querystore.QueryStore;
 import com.flipkart.foxtrot.core.querystore.QueryStoreException;
 import com.flipkart.foxtrot.core.table.TableMetadataManager;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.yammer.metrics.annotation.Timed;
 import org.elasticsearch.action.WriteConsistencyLevel;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
@@ -38,11 +42,11 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.hppc.cursors.ObjectCursor;
-import org.elasticsearch.common.joda.time.DateTime;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,11 +229,10 @@ public class ElasticsearchQueryStore implements QueryStore {
                     .setSize(1)
                     .execute()
                     .actionGet();
-            if(searchResponse.getHits().totalHits() == 0 ) {
+            if (searchResponse.getHits().totalHits() == 0) {
                 logger.warn("Going into compatibility mode, looks using passed in ID as the data store id: {}", id);
                 lookupKey = id;
-            }
-            else {
+            } else {
                 lookupKey = searchResponse.getHits().getHits()[0].getId();
                 logger.debug("Translated lookup key for {} is {}.", id, lookupKey);
             }
@@ -268,10 +271,10 @@ public class ElasticsearchQueryStore implements QueryStore {
                     .mappings();
 
             Map<String, String> rowKeys = Maps.newLinkedHashMap();
-            for(String id: ids) {
+            for (String id : ids) {
                 rowKeys.put(id, id);
             }
-            if(!bypassMetalookup) {
+            if (!bypassMetalookup) {
                 SearchResponse response = connection.getClient().prepareSearch(ElasticsearchUtils.getIndices(table))
                         .setTypes(ElasticsearchUtils.DOCUMENT_TYPE_NAME)
                         .setQuery(
@@ -284,7 +287,7 @@ public class ElasticsearchQueryStore implements QueryStore {
                         .actionGet();
                 for (SearchHit hit : response.getHits()) {
                     final String id = hit.getFields().get(ElasticsearchUtils.DOCUMENT_META_ID_FIELD_NAME).getValue().toString();
-                    rowKeys.put(id,hit.getId());
+                    rowKeys.put(id, hit.getId());
                 }
             }
             logger.info("Get row keys: {}", rowKeys.size());
@@ -346,13 +349,49 @@ public class ElasticsearchQueryStore implements QueryStore {
     }
 
     @Override
-    @Timed
-    public void cleanup(final String table) throws QueryStoreException {
-        cleanup(ImmutableSet.of(table));
+    public void optimizeIndexes() throws QueryStoreException {
+        DateTime indexOptimizationMinTime = DateTime.now().minusDays(7);
+        DateTime indexOptimizationMaxTime = DateTime.now().minusDays(1);
+        List<String> indicesToOptimize = new ArrayList<>();
+        try {
+            IndicesStatusResponse response = connection.getClient().admin().indices().prepareStatus().execute().actionGet();
+            Set<String> currentIndices = response.getIndices().keySet();
+            logger.warn("Current Indices : {}", new Object[]{currentIndices});
+            for (String currentIndex : currentIndices) {
+                DateTime creationDate = ElasticsearchUtils.getCreationDateFromIndex(currentIndex);
+                if (creationDate != null
+                        && creationDate.isAfter(indexOptimizationMinTime)
+                        && creationDate.isBefore(indexOptimizationMaxTime)) {
+                    indicesToOptimize.add(currentIndex);
+                    logger.warn("Index eligible for Optimization : {}", new Object[]{currentIndex});
+                }
+            }
+            logger.warn("Index Optimization Started - {}", new Object[]{indicesToOptimize});
+            if (indicesToOptimize.size() > 0) {
+                List<List<String>> subLists = Lists.partition(indicesToOptimize, 5);
+                for (List<String> subList : subLists) {
+                    try {
+                        logger.warn("Optimizing Indexes - {}", new Object[]{subList});
+                        connection.getClient().admin().indices().prepareOptimize(
+                                subList.toArray(new String[subList.size()]))
+                                .setFlush(true)
+                                .setMaxNumSegments(1)
+                                .execute().actionGet(TimeValue.timeValueMinutes(10));
+                        logger.warn(String.format("Optimized Indexes - %s", subList));
+                    } catch (Exception e) {
+                        logger.error(String.format("Index Optimization Failed - %s", subList), e);
+                    }
+                }
+            }
+            logger.warn("Index Optimization Finished - {}", new Object[]{indicesToOptimize});
+        } catch (Exception ex) {
+            logger.error(String.format("Index Optimization Failed - %s", indicesToOptimize), ex);
+            throw new QueryStoreException(QueryStoreException.ErrorCode.DATA_CLEANUP_ERROR,
+                    String.format("Index Optimization Failed - %s", indicesToOptimize), ex);
+        }
     }
 
-    @Override
-    @Timed
+
     public void cleanup(Set<String> tables) throws QueryStoreException {
         List<String> indicesToDelete = new ArrayList<String>();
         try {
@@ -400,6 +439,5 @@ public class ElasticsearchQueryStore implements QueryStore {
         dataNode.put(ElasticsearchUtils.DOCUMENT_META_FIELD_NAME, metaNode);
         return dataNode.toString();
     }
-
 
 }
