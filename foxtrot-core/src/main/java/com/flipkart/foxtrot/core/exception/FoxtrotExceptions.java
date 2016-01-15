@@ -73,8 +73,8 @@ public class FoxtrotExceptions {
         return new DataCleanupException(message, e);
     }
 
-    public static DataCleanupException createIndexOptimizationException(String message, Exception e) {
-        return new DataCleanupException(message, e);
+    public static IndexOptimizationException createIndexOptimizationException(String message, Exception e) {
+        return new IndexOptimizationException(message, e);
     }
 
     public static QueryCreationException queryCreationException(ActionRequest actionRequest, Exception e) {

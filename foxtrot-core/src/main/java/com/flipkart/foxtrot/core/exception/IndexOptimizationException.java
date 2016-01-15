@@ -12,7 +12,7 @@ public class IndexOptimizationException extends FoxtrotException {
     private String message;
 
     protected IndexOptimizationException(String message, Throwable cause) {
-        super(ErrorCode.DATA_CLEANUP_ERROR, cause);
+        super(ErrorCode.INDEX_OPTIMIZATION_EXCEPTION, cause);
         this.message = message;
     }
 

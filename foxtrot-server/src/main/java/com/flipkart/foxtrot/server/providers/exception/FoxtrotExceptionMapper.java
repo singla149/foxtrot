@@ -47,6 +47,7 @@ public class FoxtrotExceptionMapper implements ExceptionMapper<FoxtrotException>
                 return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
             case TABLE_ALREADY_EXISTS:
                 return Response.status(Response.Status.CONFLICT).entity(response).build();
+            case INDEX_OPTIMIZATION_EXCEPTION:
             case CONSOLE_SAVE_EXCEPTION:
             case CONSOLE_FETCH_EXCEPTION:
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
