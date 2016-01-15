@@ -21,13 +21,14 @@ import com.flipkart.foxtrot.common.Document;
 import com.flipkart.foxtrot.common.Table;
 import com.flipkart.foxtrot.core.common.Action;
 import com.flipkart.foxtrot.core.datastore.DataStore;
-import com.flipkart.foxtrot.core.datastore.DataStoreException;
 import com.flipkart.foxtrot.core.datastore.impl.hbase.HBaseDataStore;
 import com.flipkart.foxtrot.core.datastore.impl.hbase.HbaseConfig;
 import com.flipkart.foxtrot.core.datastore.impl.hbase.HbaseTableConnection;
+import com.flipkart.foxtrot.core.exception.FoxtrotException;
 import com.flipkart.foxtrot.core.querystore.actions.spi.ActionMetadata;
 import com.flipkart.foxtrot.core.querystore.actions.spi.AnalyticsLoader;
 import com.flipkart.foxtrot.core.querystore.actions.spi.AnalyticsProvider;
+import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.joda.time.DateTime;
 import org.mockito.Matchers;
@@ -39,7 +40,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 /**
  * Created by rishabh.goyal on 28/04/14.
@@ -50,16 +52,18 @@ public class TestUtils {
     public static String TEST_TABLE_NAME = "test-table";
     public static Table TEST_TABLE = new Table(TEST_TABLE_NAME, 7);
 
-    public static DataStore getDataStore() throws DataStoreException {
+    public static DataStore getDataStore() throws FoxtrotException {
         HTableInterface tableInterface = MockHTable.create();
         HbaseTableConnection tableConnection = Mockito.mock(HbaseTableConnection.class);
-        when(tableConnection.getTable(Matchers.<Table>any())).thenReturn(tableInterface);
-        when(tableConnection.getHbaseConfig()).thenReturn(new HbaseConfig());
-        return new HBaseDataStore(tableConnection, new ObjectMapper());
+        doReturn(tableInterface).when(tableConnection).getTable(Matchers.<Table>any());
+        doReturn(new HbaseConfig()).when(tableConnection).getHbaseConfig();
+        HBaseDataStore hBaseDataStore = new HBaseDataStore(tableConnection, new ObjectMapper());
+        hBaseDataStore = spy(hBaseDataStore);
+        return hBaseDataStore;
     }
 
     public static Document getDocument(String id, long timestamp, Object[] args, ObjectMapper mapper) {
-        Map<String, Object> data = new HashMap<String, Object>();
+        Map<String, Object> data = Maps.newHashMap();
         for (int i = 0; i < args.length; i += 2) {
             data.put((String) args[i], args[i + 1]);
         }
@@ -72,7 +76,7 @@ public class TestUtils {
         if (actions.isEmpty()) {
             throw new Exception("No analytics actions found!!");
         }
-        List<NamedType> types = new Vector<NamedType>();
+        List<NamedType> types = new Vector<>();
         for (Class<? extends Action> action : actions) {
             AnalyticsProvider analyticsProvider = action.getAnnotation(AnalyticsProvider.class);
             if (null == analyticsProvider.request()
@@ -203,13 +207,13 @@ public class TestUtils {
 
     public static List<Document> getMappingDocuments(ObjectMapper mapper) {
         List<Document> documents = new Vector<Document>();
-        Map<String, Object> document = new HashMap<String, Object>();
+        Map<String, Object> document = Maps.newHashMap();
         document.put("word", "1234");
         document.put("data", Collections.singletonMap("data", "d"));
         document.put("header", Collections.singletonList(Collections.singletonMap("hello", "world")));
         documents.add(new Document("Z", System.currentTimeMillis(), mapper.valueToTree(document)));
 
-        document = new HashMap<>();
+        document = Maps.newHashMap();
         document.put("word", "1234");
         document.put("data", Collections.singletonMap("data", "d"));
         document.put("head", Collections.singletonList(Collections.singletonMap("hello", 23)));
@@ -230,5 +234,4 @@ public class TestUtils {
         documents.add(TestUtils.getDocument("E", startTimestamp++, new Object[]{"os", "ios", "version", 2, "device", "ipad"}, mapper));
         return documents;
     }
-
 }
