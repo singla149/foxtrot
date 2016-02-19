@@ -263,4 +263,8 @@ public class ElasticsearchUtils {
         String creationDateString = index.substring(index.indexOf(indexPrefix) + indexPrefix.length());
         return DATE_TIME_FORMATTER.parseDateTime(creationDateString);
     }
+
+    public static String getAllIndicesPattern() {
+        return String.format("%s-*-%s-*", ElasticsearchUtils.TABLENAME_PREFIX, ElasticsearchUtils.TABLENAME_POSTFIX);
+    }
 }
