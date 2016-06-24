@@ -19,6 +19,7 @@ function Histogram() {
     this.setupModalName = "#setupHistogram";
     //Instance properties
     this.selectedFilters = null;
+    this.doCompare = false;
     this.period = 0;
 }
 
@@ -48,7 +49,7 @@ Histogram.prototype.render = function (data, animate) {
     }
     var times = [];
     if (!data.hasOwnProperty('counts')) {
-        chartContent.empty();
+        canvas.empty();
         return;
     }
     var rows = [];
@@ -92,15 +93,162 @@ Histogram.prototype.render = function (data, animate) {
     });
 };
 
+Histogram.prototype.renderWithCompare = function (data, dataPrevious, animate) {
+    if (this.period == 0) {
+        return;
+    }
+    if (this.title) {
+        $("#" + this.id).find(".tile-header").text(this.title);
+    } else {
+        $("#" + this.id).find(".tile-header").text("Event rate for " + this.tables.selectedTable.name + " table");
+    }
+
+    var parent = $("#content-for-" + this.id);
+    var canvas = null;
+    if (!parent || 0 == parent.find(".chartcanvas").length) {
+        parent = $("#content-for-" + this.id);
+        canvas = $("<div>", {class: "chartcanvas"});
+        parent.append(canvas);
+        legendArea = $("<div>", {class: "legendArea"});
+        parent.append(legendArea);
+    }
+    else {
+        canvas = parent.find(".chartcanvas");
+    }
+
+    var times = [];
+    if (!data.hasOwnProperty('counts') && !dataPrevious.hasOwnProperty('counts')) {
+        canvas.empty();
+        return;
+    }
+    var tmpData = new Object();
+
+    var trendData = data.counts;
+    for (var i = 0; i < trendData.length; i++) {
+        var time = trendData[i].period;
+        var count = trendData[i].count;
+        if (!tmpData.hasOwnProperty(time)) {
+            tmpData[time] = new Object();
+        }
+        tmpData[time]["curr"] = count;
+    }
+    trendData = dataPrevious.counts;
+    for (var i = 0; i < trendData.length; i++) {
+        var time = trendData[i].period+ 24*1000*60;
+        var count = trendData[i].count;
+        if (!tmpData.hasOwnProperty(time)) {
+            tmpData[time] = new Object();
+        }
+        tmpData[time]["prev"] = count;
+    }
+    if (0 == Object.keys(tmpData).length) {
+        canvas.empty();
+        return;
+    }
+    var colors = new Colors(2);
+    var trendWiseData = new Object();
+    for (var time in tmpData) {
+        var count = 0;
+        var timeData = tmpData[time];
+        if (timeData.hasOwnProperty("curr")) {
+            count = timeData["curr"];
+        }
+        var rows = null;
+        if (!trendWiseData.hasOwnProperty("curr")) {
+            rows = [];
+            trendWiseData["curr"] = rows;
+        }
+        rows = trendWiseData["curr"];
+        var timeVal = parseInt(time);
+        rows.push([timeVal, count]);
+    }
+    for (var time in tmpData) {
+        var count = 0;
+        var timeData = tmpData[time];
+        if (timeData.hasOwnProperty("prev")) {
+            count = timeData["prev"];
+        }
+        var rows = null;
+        if (!trendWiseData.hasOwnProperty("prev")) {
+            rows = [];
+            trendWiseData["prev"] = rows;
+        }
+        rows = trendWiseData["prev"];
+        var timeVal = parseInt(time);
+        rows.push([timeVal, count]);
+    }
+    var d=[];
+    var rows = trendWiseData["curr"];
+    rows.sort(function (lhs, rhs) {
+        return (lhs[0] < rhs[0]) ? -1 : ((lhs[0] == rhs[0]) ? 0 : 1);
+    })
+    d.push({
+        data: rows,
+        color: colors.nextColor(),
+        fill: 0.3,
+        fillColor: "#A3A3A3",
+        lines: {show: true},
+        shadowSize: 0/*, curvedLines: {apply: true}*/
+    });
+     rows = trendWiseData["prev"];
+    rows.sort(function (lhs, rhs) {
+        return (lhs[0] < rhs[0]) ? -1 : ((lhs[0] == rhs[0]) ? 0 : 1);
+    })
+    d.push({
+        data: rows,
+        color: colors.nextColor(),
+        fill: 0.3,
+        fillColor: "#A3A3A3",
+        lines: {show: true},
+        shadowSize: 0/*, curvedLines: {apply: true}*/
+    });
+
+    var timestamp = new Date().getTime();
+   // var d= [{data: rowsPrevious, color: "#9c5766", shadowSize: 0}];
+    $.plot(canvas, d, {
+        series: {
+           // stack: true,
+            lines: {
+                show: true,
+                lineWidth: 1.0,
+                shadowSize: 0,
+                fill: true,
+                fillColor: {colors: [{opacity: 0.7}, {opacity: 0.1}]}
+            }
+        },
+        grid: {
+            hoverable: true,
+            color: "#B2B2B2",
+            show: true,
+            borderWidth: 1,
+            borderColor: "#EEEEEE"
+        },
+        xaxis: {
+            mode: "time",
+            timezone: "browser"
+        },
+        selection: {
+            mode: "x",
+            minSize: 1
+        },
+        tooltip: true,
+        tooltipOpts: {
+            content: "%y events at %x",
+            defaultFormat: true
+        }
+    });
+}
+
 Histogram.prototype.isSetupDone = function () {
     return this.period != 0;
 };
 
-Histogram.prototype.getQuery = function () {
+Histogram.prototype.getQuery = function (noOfDaysOld) {
+    if (noOfDaysOld === undefined) noOfDaysOld = 0;
     if (this.period != 0) {
         var timestamp = new Date().getTime();
         var filters = [];
-        filters.push(timeValue(this.period, $("#" + this.id).find(".period-select").val()));
+        filters.push(timeValue(this.period, $("#" + this.id).find(".period-select").val(), noOfDaysOld));
         if (this.selectedFilters && this.selectedFilters.filters) {
             for (var i = 0; i < this.selectedFilters.filters.length; i++) {
                 filters.push(this.selectedFilters.filters[i]);
@@ -129,7 +277,7 @@ Histogram.prototype.configChanged = function () {
     } else {
         this.selectedFilters = null;
     }
-
+    this.doCompare = modal.find(".hist-do-compare").prop('checked');
     console.log("Config changed for: " + this.id);
 };
 
@@ -140,6 +288,7 @@ Histogram.prototype.populateSetupDialog = function () {
     if (this.selectedFilters) {
         modal.find(".selected-filters").val(JSON.stringify(this.selectedFilters));
     }
+    modal.find(".hist-do-compare").prop('checked', this.doCompare);
 }
 
 Histogram.prototype.registerSpecificData = function (representation) {
@@ -158,4 +307,8 @@ Histogram.prototype.loadSpecificData = function (representation) {
 
 Histogram.prototype.registerComplete = function () {
     $("#" + this.id).find(".glyphicon-filter").hide();
+};
+
+Histogram.prototype.getCompareStatus = function () {
+    return this.doCompare;
 };
